@@ -5,3 +5,4 @@ version = "0.1.0"
 
 [dependencies]
 macroquad = "0.3"
+ndarray = "0.15"

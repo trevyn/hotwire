@@ -6,6 +6,12 @@ enum CellState {
 	Dead,
 }
 
+impl Default for CellState {
+	fn default() -> Self {
+		Self::Dead
+	}
+}
+
 fn window_conf() -> Conf {
 	Conf {
 		// fullscreen: true,
@@ -23,8 +29,8 @@ async fn main() {
 	let w = screen_width() as usize / 10;
 	let h = screen_height() as usize / 10;
 
-	let mut cells = vec![CellState::Dead; w * h];
-	let mut buffer = vec![CellState::Dead; w * h];
+	let mut cells = ndarray::Array2::<CellState>::default((h, w));
+	let mut buffer = ndarray::Array2::<CellState>::default((h, w));
 
 	let mut image = Image::gen_image_color(w as u16, h as u16, WHITE);
 
@@ -58,15 +64,15 @@ async fn main() {
 							continue;
 						}
 
-						let neighbor = cells[(y + j) as usize * w + (x + i) as usize];
+						let neighbor = cells[[(y + j) as usize, (x + i) as usize]];
 						if neighbor == CellState::Alive {
 							neighbors_count += 1;
 						}
 					}
 				}
 
-				let current_cell = cells[y as usize * w + x as usize];
-				buffer[y as usize * w + x as usize] = match (current_cell, neighbors_count) {
+				let current_cell = cells[[y as usize, x as usize]];
+				buffer[[y as usize, x as usize]] = match (current_cell, neighbors_count) {
 					// Rule 1: Any live cell with fewer than two live neighbours
 					// dies, as if caused by underpopulation.
 					(CellState::Alive, x) if x < 2 => CellState::Dead,
@@ -91,16 +97,16 @@ async fn main() {
 			let x = (i % w) as u32;
 			let y = (i / w) as u32;
 
-			cells[i] = buffer[i];
+			cells[[y as usize, x as usize]] = buffer[[y as usize, x as usize]];
 
 			if (x, y) == (pos.0 as u32, pos.1 as u32) {
-				cells[i] = CellState::Alive;
+				cells[[y as usize, x as usize]] = CellState::Alive;
 				image.set_pixel(x, y, WHITE);
 			} else {
 				image.set_pixel(
 					x,
 					y,
-					match buffer[i] {
+					match buffer[[y as usize, x as usize]] {
 						CellState::Alive => macroquad::color::hsl_to_rgb((i % w) as f32 / (w as f32) + qq, 1., 0.5),
 						CellState::Dead => BLACK,
 					},
