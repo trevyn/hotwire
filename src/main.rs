@@ -31,6 +31,7 @@ async fn main() {
 
 	let mut cells = ndarray::Array2::<CellState>::default((h, w));
 	let mut buffer = ndarray::Array2::<CellState>::default((h, w));
+	let mut overlay = ndarray::Array2::<bool>::default((h, w));
 
 	let mut image = Image::gen_image_color(w as u16, h as u16, WHITE);
 
@@ -92,23 +93,31 @@ async fn main() {
 		}
 
 		let pos = mouse_position();
+		show_mouse(pos.1 < 0.0);
 
 		for i in 0..buffer.len() {
-			let x = (i % w) as u32;
-			let y = (i / w) as u32;
+			let x = (i % w) as usize;
+			let y = (i / w) as usize;
 
-			cells[[y as usize, x as usize]] = buffer[[y as usize, x as usize]];
+			cells[[y, x]] = buffer[[y, x]];
 
-			if (x, y) == (pos.0 as u32, pos.1 as u32) {
-				cells[[y as usize, x as usize]] = CellState::Alive;
-				image.set_pixel(x, y, WHITE);
+			if (x, y) == (pos.0 as usize / 10, pos.1 as usize / 10) {
+				if is_mouse_button_pressed(MouseButton::Left) {
+					overlay[[y, x]] = true;
+				};
+
+				cells[[y, x]] = CellState::Alive;
+				image.set_pixel(x as u32, y as u32, WHITE);
 			} else {
 				image.set_pixel(
-					x,
-					y,
-					match buffer[[y as usize, x as usize]] {
-						CellState::Alive => macroquad::color::hsl_to_rgb((i % w) as f32 / (w as f32) + qq, 1., 0.5),
-						CellState::Dead => BLACK,
+					x as u32,
+					y as u32,
+					match (overlay[[y, x]], buffer[[y, x]]) {
+						(true, _) => WHITE,
+						(false, CellState::Alive) => {
+							macroquad::color::hsl_to_rgb((i % w) as f32 / (w as f32) + qq, 1., 0.5)
+						}
+						(false, CellState::Dead) => BLACK,
 					},
 				);
 			}
