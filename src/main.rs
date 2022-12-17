@@ -1,4 +1,8 @@
+use macroquad::color::hsl_to_rgb;
 use macroquad::prelude::*;
+use ndarray::Array2;
+
+const PIXEL_SCALE: usize = 10;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum CellState {
@@ -26,26 +30,31 @@ async fn main() {
 	let mut qq = 0.0;
 	let mut tt = 0.01;
 
-	let w = screen_width() as usize / 10;
-	let h = screen_height() as usize / 10;
+	let w = screen_width() as usize / PIXEL_SCALE;
+	let h = screen_height() as usize / PIXEL_SCALE;
 
-	let mut cells = ndarray::Array2::<CellState>::default((h, w));
-	let mut buffer = ndarray::Array2::<CellState>::default((h, w));
-	let mut overlay = ndarray::Array2::<bool>::default((h, w));
+	dbg!(w, h);
+
+	let mut cells = Array2::<CellState>::default((h, w));
+	let mut buffer = Array2::<CellState>::default((h, w));
+	let mut overlay = Array2::<bool>::default((h, w));
 
 	let mut image = Image::gen_image_color(w as u16, h as u16, WHITE);
+	let texture = Texture2D::from_image(&image);
+	texture.set_filter(FilterMode::Nearest);
 
 	for cell in cells.iter_mut() {
 		if rand::gen_range(0, 5) == 0 {
 			*cell = CellState::Alive;
 		}
 	}
-	let texture = Texture2D::from_image(&image);
-
-	texture.set_filter(FilterMode::Nearest);
 
 	loop {
-		clear_background(WHITE);
+		if let Some('q') = get_char_pressed() {
+			break;
+		}
+
+		// clear_background(WHITE);
 
 		let w = image.width();
 		let h = image.height();
@@ -94,33 +103,32 @@ async fn main() {
 
 		let pos = mouse_position();
 		show_mouse(pos.1 < 0.0);
+		let pos = [pos.1 as usize / PIXEL_SCALE, pos.0 as usize / PIXEL_SCALE];
 
-		for i in 0..buffer.len() {
-			let x = (i % w) as usize;
-			let y = (i / w) as usize;
+		for ((y, x), &cellstate) in buffer.indexed_iter() {
+			let i = [y, x];
 
-			cells[[y, x]] = buffer[[y, x]];
+			image.set_pixel(
+				x as u32,
+				y as u32,
+				if i == pos {
+					cells[i] = CellState::Alive;
 
-			if (x, y) == (pos.0 as usize / 10, pos.1 as usize / 10) {
-				if is_mouse_button_pressed(MouseButton::Left) {
-					overlay[[y, x]] = true;
-				};
+					if is_mouse_button_down(MouseButton::Left) {
+						overlay[i] = true;
+					};
 
-				cells[[y, x]] = CellState::Alive;
-				image.set_pixel(x as u32, y as u32, WHITE);
-			} else {
-				image.set_pixel(
-					x as u32,
-					y as u32,
-					match (overlay[[y, x]], buffer[[y, x]]) {
+					WHITE
+				} else {
+					cells[i] = cellstate;
+
+					match (overlay[i], cellstate) {
 						(true, _) => WHITE,
-						(false, CellState::Alive) => {
-							macroquad::color::hsl_to_rgb((i % w) as f32 / (w as f32) + qq, 1., 0.5)
-						}
+						(false, CellState::Alive) => hsl_to_rgb(x as f32 / (w as f32) + qq, 1., 0.5),
 						(false, CellState::Dead) => BLACK,
-					},
-				);
-			}
+					}
+				},
+			);
 		}
 
 		texture.update(&image);
@@ -132,7 +140,7 @@ async fn main() {
 		}
 
 		let params = DrawTextureParams {
-			dest_size: Some(Vec2 { x: screen_width(), y: screen_height() }),
+			dest_size: Some(Vec2 { x: (w * PIXEL_SCALE) as f32, y: (h * PIXEL_SCALE) as f32 }),
 			..Default::default()
 		};
 
