@@ -49,8 +49,10 @@ async fn main() {
 		}
 	}
 
+	let mut paint_color = true;
+
 	loop {
-		if let Some('q') = get_char_pressed() {
+		if let Some('q' | '\u{1b}') = get_char_pressed() {
 			break;
 		}
 
@@ -101,9 +103,9 @@ async fn main() {
 			}
 		}
 
-		let pos = mouse_position();
-		show_mouse(pos.1 < 0.0);
-		let pos = [pos.1 as usize / PIXEL_SCALE, pos.0 as usize / PIXEL_SCALE];
+		let mouse_pos = mouse_position();
+		show_mouse(mouse_pos.1 < 0.0);
+		let pos = [mouse_pos.1 as usize / PIXEL_SCALE, mouse_pos.0 as usize / PIXEL_SCALE];
 
 		for ((y, x), &cellstate) in buffer.indexed_iter() {
 			let i = [y, x];
@@ -114,11 +116,21 @@ async fn main() {
 				if i == pos {
 					cells[i] = CellState::Alive;
 
-					if is_mouse_button_down(MouseButton::Left) {
-						overlay[i] = true;
-					};
+					if is_mouse_button_pressed(MouseButton::Left) {
+						paint_color = !overlay[i];
+					}
 
-					WHITE
+					if is_mouse_button_down(MouseButton::Left) {
+						overlay[i] = paint_color;
+						if paint_color {
+							WHITE
+						} else {
+							BLACK
+						}
+					} else {
+						paint_color = true;
+						WHITE
+					}
 				} else {
 					cells[i] = cellstate;
 
@@ -145,6 +157,8 @@ async fn main() {
 		};
 
 		draw_texture_ex(texture, 0., 0., WHITE, params);
+
+		draw_rectangle(mouse_pos.0, mouse_pos.1, 3., 3., if paint_color { BLACK } else { WHITE });
 
 		next_frame().await
 	}
