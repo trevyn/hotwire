@@ -5,4 +5,5 @@ version = "0.1.0"
 
 [dependencies]
 macroquad = "0.3"
-ndarray = "0.15"
+ndarray = {version = "0.15", features = ["serde"]}
+turbosql = {git = "https://github.com/trevyn/turbosql"}

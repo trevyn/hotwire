@@ -1,8 +1,17 @@
+#![allow(non_camel_case_types)]
+
 use macroquad::color::hsl_to_rgb;
 use macroquad::prelude::*;
 use ndarray::Array2;
+use turbosql::*;
 
 const PIXEL_SCALE: usize = 10;
+
+#[derive(Turbosql, Default)]
+struct overlay {
+	rowid: Option<i64>,
+	overlay: Option<Array2<bool>>,
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum CellState {
@@ -52,9 +61,16 @@ async fn main() {
 	let mut paint_color = true;
 
 	loop {
-		if let Some('q' | '\u{1b}') = get_char_pressed() {
-			break;
-		}
+		match get_char_pressed() {
+			Some('q' | '\u{1b}') => break,
+			Some('s') => {
+				overlay { rowid: None, overlay: Some(overlay.clone()) }.insert().unwrap();
+			}
+			Some('l') => {
+				overlay = select!(overlay "ORDER BY rowid DESC").unwrap().overlay.unwrap();
+			}
+			_ => (),
+		};
 
 		// clear_background(WHITE);
 
